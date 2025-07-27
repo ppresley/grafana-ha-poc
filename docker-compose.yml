@@ -5,45 +5,54 @@ services:
     container_name: postgres-node-1
     image: bitnami/postgresql-repmgr:latest
     environment:
-      - POSTGRESQL_POSTGRES_PASSWORD=adminpassword
-      - POSTGRESQL_USERNAME=myuser
-      - POSTGRESQL_PASSWORD=mypassword
-      - POSTGRESQL_DATABASE=mydatabase
-      - REPMGR_PASSWORD=repmgrpassword
+      - POSTGRESQL_POSTGRES_PASSWORD=${POSTGRESQL_POSTGRES_PASSWORD}
+      - POSTGRESQL_USERNAME=${POSTGRESQL_USERNAME}
+      - POSTGRESQL_PASSWORD=${POSTGRESQL_PASSWORD}
+      - POSTGRESQL_DATABASE=${POSTGRESQL_DATABASE}
+      - REPMGR_PASSWORD=${REPMGR_PASSWORD}
       - REPMGR_PRIMARY_HOST=postgres-node-1
       - REPMGR_NODE_NAME=postgres-node-1
       - REPMGR_NODE_NETWORK_NAME=postgres-node-1
-      - REPMGR_PRIMARY_PORT=5432
-      - REPMGR_PORT_NUMBER=5432
-      - REPMGR_PARTNER_NODES=postgres-node-1,postgres-node-2
+      - REPMGR_PRIMARY_PORT=${REPMGR_PRIMARY_PORT}
+      - REPMGR_PORT_NUMBER=${REPMGR_PORT_NUMBER}
+      - REPMGR_PARTNER_NODES=${REPMGR_PARTNER_NODES}
       - BITNAMI_DEBUG=true
     ports:
       - "5432:5432"
     volumes:
-      - postgres-node-1-data:/bitnami/postgresql
+      - /home/ubuntu/docker_volumes/postgres-node-1-data:/bitnami/postgresql
 
   postgres-node-2:
     container_name: postgres-node-2
     image: bitnami/postgresql-repmgr:latest
     environment:
-      - POSTGRESQL_POSTGRES_PASSWORD=adminpassword
-      - POSTGRESQL_USERNAME=myuser
-      - POSTGRESQL_PASSWORD=mypassword
-      - POSTGRESQL_DATABASE=mydatabase
-      - REPMGR_PASSWORD=repmgrpassword
+      - POSTGRESQL_POSTGRES_PASSWORD=${POSTGRESQL_POSTGRES_PASSWORD}
+      - POSTGRESQL_USERNAME=${POSTGRESQL_USERNAME}
+      - POSTGRESQL_PASSWORD=${POSTGRESQL_PASSWORD}
+      - POSTGRESQL_DATABASE=${POSTGRESQL_DATABASE}
+      - REPMGR_PASSWORD=${REPMGR_PASSWORD}
       - REPMGR_PRIMARY_HOST=postgres-node-1
       - REPMGR_NODE_NAME=postgres-node-2
       - REPMGR_NODE_NETWORK_NAME=postgres-node-2
-      - REPMGR_PRIMARY_PORT=5432
-      - REPMGR_PORT_NUMBER=5432
-      - REPMGR_PARTNER_NODES=postgres-node-1,postgres-node-2
+      - REPMGR_PRIMARY_PORT=${REPMGR_PRIMARY_PORT}
+      - REPMGR_PORT_NUMBER=${REPMGR_PORT_NUMBER}
+      - REPMGR_PARTNER_NODES=${REPMGR_PARTNER_NODES}
       - BITNAMI_DEBUG=true
     depends_on:
       - postgres-node-1
     ports:
       - "5433:5432"
     volumes:
-      - postgres-node-2-data:/bitnami/postgresql
+      - /home/ubuntu/docker_volumes/postgres-node-2-data:/bitnami/postgresql
+
+  pgadmin-prod:
+    container_name: pgadmin-prod
+    image: dpage/pgadmin4:latest
+    environment:
+      - PGADMIN_DEFAULT_EMAIL=${PGADMIN_DEFAULT_EMAIL}
+      - PGADMIN_DEFAULT_PASSWORD=${PGADMIN_DEFAULT_PASSWORD}
+    ports:
+      - "5050:80"
 
   grafana-node-1:
     container_name: grafana-node-1
@@ -55,7 +64,7 @@ services:
     volumes:
       - ./grafana/provisioning:/etc/grafana/provisioning
       - ./grafana/config/grafana.ini:/etc/grafana/grafana.ini
-      - grafana-node-1-data:/var/lib/grafana
+      - /home/ubuntu/docker_volumes/grafana-node-1-data:/var/lib/grafana
     depends_on:
       - haproxy
 
@@ -69,7 +78,7 @@ services:
     volumes:
       - ./grafana/provisioning:/etc/grafana/provisioning
       - ./grafana/config/grafana.ini:/etc/grafana/grafana.ini
-      - grafana-node-2-data:/var/lib/grafana
+      - /home/ubuntu/docker_volumes/grafana-node-2-data:/var/lib/grafana
     depends_on:
       - haproxy
 
@@ -87,14 +96,19 @@ services:
     image: haproxy:latest
     ports:
       - "5434:5432"
+      - "8404:8404"
     volumes:
       - ./haproxy/haproxy.cfg:/usr/local/etc/haproxy/haproxy.cfg
     depends_on:
       - postgres-node-1
       - postgres-node-2
 
-volumes:
-  postgres-node-1-data:
-  postgres-node-2-data:
-  grafana-node-1-data:
-  grafana-node-2-data:
+  haproxy-exporter:
+    image: prom/haproxy-exporter:latest
+    container_name: haproxy-exporter
+    ports:
+      - "9101:9101"
+    command:
+      - '--haproxy.scrape-uri=http://haproxy:8404/;csv'
+    depends_on:
+      - haproxy
